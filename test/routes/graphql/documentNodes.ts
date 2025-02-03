@@ -307,3 +307,62 @@ export const Query_user_updater =
         }
     }
 }`);
+
+export const mutation_createVenue = gql(`
+    mutation Mutation_createVenue($input: MutationCreateVenueInput!) {  
+      createVenue(input: $input) {
+        id
+        name
+        description
+        createdAt
+        updatedAt
+        organization {
+            addressLine1
+            addressLine2
+            avatarMimeType
+            avatarURL
+            city
+            countryCode
+            createdAt
+            description
+            id
+            name
+            pinnedPostsCount
+            postalCode
+            postsCount
+            state
+            updatedAt        }
+        attachments {   
+         mimeType
+         url
+         
+        }
+        creator {
+            addressLine1
+            addressLine2
+            avatarMimeType
+            avatarURL
+            birthDate
+            city
+            countryCode
+            createdAt
+            description
+            educationGrade
+            emailAddress
+            employmentStatus
+            homePhoneNumber
+            id
+            isEmailAddressVerified
+            maritalStatus
+            mobilePhoneNumber
+            name
+            natalSex
+            postalCode
+            role
+            state
+            updatedAt
+            workPhoneNumber
+        }
+      }
+    }
+  `);
