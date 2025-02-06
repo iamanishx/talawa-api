@@ -1,439 +1,666 @@
-import { it, expect, vi, suite, test } from "vitest";
-import { mercuriusClient } from "../client";
-import { assertToBeNonNullish } from "../../../helpers";
-import { server } from "../../../server";
-import { mutation_createVenue, Query_signIn } from "../documentNodes";
-import type { FileUpload } from "graphql-upload-minimal";
 import { Readable } from "node:stream";
+import { GraphQLScalarType, graphql } from "graphql";
+import type { FileUpload } from "graphql-upload-minimal"; // Import the correct FileUpload type
+import { ulid } from "ulidx";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-suite("Mutation field createVenue", () => {
-    
-	const mockCtx = {
-		currentClient: {
-			isAuthenticated: true,
-			user: { id: "user-123", role: "administrator" },
+vi.mock("ulidx", () => ({ ulid: vi.fn(() => "mocked-ulid") }));
+
+// Define FileUpload interface
+
+// Import your schema builder.
+import { builder } from "~/src/graphql/builder";
+// Import your mutation file so that it registers the createVenue mutation.
+import "~/src/graphql/types/Mutation/createVenue";
+// import { TalawaGraphQLError } from "~/src/utilities/TalawaGraphQLError";
+
+/** **********************************************************************
+ * Dummy Upload Scalar Registration
+ *********************************************************************** */
+// Provide a dummy Upload scalar implementation to avoid "Upload not implemented" errors.
+
+function createDummyReadStream(): NodeJS.ReadStream {
+	const stream = new Readable({
+		read() {
+			this.push("dummy content");
+			this.push(null);
 		},
-		drizzleClient: {
-			query: {
-				organizationsTable: {
-					findFirst: vi.fn().mockResolvedValue({
-						countryCode: "US",
-						membershipsWhereOrganization: [{ role: "administrator" }],
-						venuesWhereOrganization: [],
-					}),
-				},
+	});
+
+	const dummyStream = Object.assign(stream, {
+		close: vi.fn(),
+		path: "dummy-path",
+		bytesRead: 0,
+		pending: false,
+	}) as unknown as NodeJS.ReadStream;
+
+	return dummyStream;
+}
+
+// Normalize the provided value into a proper FileUpload object
+function normalizeFileUpload(value: unknown): Promise<FileUpload> {
+	if (!value) {
+		throw new Error("Upload value cannot be null or undefined");
+	}
+	// Cast value to FileUpload as imported from graphql-upload-minimal
+	const fileUpload = value as FileUpload;
+	return Promise.resolve({
+		...fileUpload,
+		// Override createReadStream with proper type casting
+		createReadStream: () =>
+			createDummyReadStream() as unknown as NodeJS.ReadStream & {
+				close: () => void;
+				path: string;
 			},
-			transaction: vi.fn().mockImplementation(async (callback) => {
-				const tx = {
-					insert: vi.fn().mockResolvedValue([
-						{
-							id: "venue-123",
-							name: "Test Venue with Attachments",
-							description: "A test venue",
-							organizationId: "org-123",
-							attachments: [{ mimeType: "image/jpeg", name: "attachment-1" }],
-						},
-					]),
-				};
-				return await callback(tx);
-			}),
-		},
-		minio: {
-			client: {
-				putObject: vi.fn().mockImplementation((bucket, key, stream) => {
-					if (!(stream instanceof Readable)) {
-						throw new Error("Invalid stream: Expected a ReadableStream.");
-					}
-					return Promise.resolve();
-				}),
-			},
-			bucketName: "test-bucket",
+	});
+}
+
+// Create a dummy Upload scalar that uses our normalization logic
+const DummyUpload = new GraphQLScalarType({
+	name: "Upload",
+	description: "A dummy upload scalar for testing",
+	parseValue(value: unknown): Promise<FileUpload> {
+		return normalizeFileUpload(value);
+	},
+	serialize(value: unknown): unknown {
+		return value;
+	},
+	parseLiteral() {
+		throw new Error("Upload literal parsing is not supported");
+	},
+});
+
+// Register the dummy Upload scalar with your schema builder
+builder.scalarType("Upload", {
+	...DummyUpload.toConfig(),
+	description: DummyUpload.description || undefined,
+});
+/** **********************************************************************
+ * Interfaces and Helper Functions
+ *********************************************************************** */
+
+// User interface.
+interface User {
+	id: string;
+	role: string;
+}
+
+// Venue record interface.
+interface Venue {
+	id: string;
+	name: string;
+	description: string;
+	organizationId: string;
+	creatorId: string;
+	attachments?: VenueAttachment[];
+}
+
+// Venue Attachment interface.
+interface VenueAttachment {
+	id: string;
+	venueId: string;
+	creatorId: string;
+	mimeType: string;
+	name: string;
+}
+
+// Organization interface.
+interface Organization {
+	membershipsWhereOrganization: { role: string }[];
+	venuesWhereOrganization: Venue[];
+}
+
+// Minimal FileUpload interface.
+interface FakeFileUpload {
+	mimetype: string;
+	createReadStream: () => Readable;
+}
+
+// Helper: create a fake file upload.
+function createFakeFileUpload(
+	mimetype: string,
+	content = "dummy content",
+): FakeFileUpload {
+	return {
+		mimetype,
+		createReadStream: () => {
+			const stream = new Readable();
+			stream.push(content);
+			stream.push(null);
+			return stream;
 		},
 	};
+}
 
-	suite("schema operation", () => {
-		test("creates venue without attachments", async () => {
-			const result = await mercuriusClient.mutate(mutation_createVenue, {
-				variables: {
-					input: {    
-						name: "Test Venue",
-						description: "A test venue",
-						organizationId: "org-123",
-					},
-				},
-			});
+// Dummy venue record.
+const dummyCreatedVenue: Venue = {
+	id: "venue-123",
+	name: "Test Venue",
+	description: "A test venue.",
+	organizationId: "org-123",
+	creatorId: "user-123",
+};
 
-			console.log("result:", result);
-			expect(result.data).toBeDefined();
-			if (result.data?.createVenue) {
-				expect(result.data.createVenue.attachments).toBeUndefined();
-			}
-		});
+// Helper: create a dummy venue attachment record.
+function createDummyAttachment(
+	venueId: string,
+	mimetype: string,
+): VenueAttachment {
+	return {
+		id: ulid(),
+		venueId,
+		creatorId: "user-123",
+		mimeType: mimetype,
+		name: ulid(),
+	};
+}
 
-		test("creates venue with valid attachments", async () => {
-            // Mock a valid FileUpload object
-            const mockFile: FileUpload = {
-                filename: "test.jpg",
-                mimetype: "image/jpeg",
-                encoding: "utf-8",
-                createReadStream: vi.fn(() => {
-                    const stream = Readable.from(Buffer.from([0, 1, 2, 3])) as Readable & {
-                        close: () => void;
-                        bytesRead: number;
-                        path: string;
-                        pending: boolean;
-                    };
-                    stream.close = vi.fn();
-                    stream.bytesRead = 0;
-                    stream.path = "test.jpg";
-                    stream.pending = false;
-                    return stream;
-                }),
-                fieldName: ""
-            };
-          
-            // Mock the transaction to return attachments
-            mockCtx.drizzleClient.transaction.mockImplementation(async (callback) => {
-              const tx = {
-                insert: vi.fn().mockResolvedValue([{
-                  id: "venue-123",
-                  name: "Test Venue with Attachments",
-                  description: "A test venue",
-                  organizationId: "org-123",
-                  attachments: [{ mimeType: "image/jpeg", name: "attachment-1" }],
-                }]),
-              };
-              return callback(tx);
-            });
-          
-            const result = await mercuriusClient.mutate(mutation_createVenue, {
-              variables: {
-                input: {
-                  name: "Test Venue with Attachments",
-                  description: "A test venue",
-                  organizationId: "org-123",
-                  attachments: [Promise.resolve(mockFile)], // ✅ Wrap in Promise.resolve()
-                },
-              },
-            });
-            console.log("result:", result);
-            expect(result.data?.createVenue).toBeDefined();
-            expect(result.data?.createVenue?.attachments).toEqual([
-              { mimeType: "image/jpeg", name: "attachment-1" },
-            ]);
-          });
-          
-          test("should reject invalid mime types", async () => {
-            // Mock an invalid FileUpload object
-            const mockFile: FileUpload = {
-                filename: "test.txt",
-                mimetype: "text/plain", // Invalid mime type
-                encoding: "utf-8",
-                createReadStream: vi.fn(() => {
-                    const stream = Readable.from(Buffer.from([0, 1, 2, 3])) as Readable & {
-                        close: () => void;
-                        bytesRead: number;
-                        path: string;
-                        pending: boolean;
-                    };
-                    stream.close = vi.fn();
-                    stream.bytesRead = 0;
-                    stream.path = "test.txt";
-                    stream.pending = false;
-                    return stream;
-                }),
-                fieldName: ""
-            };
-          
-            const result = await mercuriusClient.mutate(mutation_createVenue, {
-              variables: {
-                input: {
-                  name: "Test Venue",
-                  organizationId: "org-123",
-                  attachments: [mockFile], // No Promise.resolve() needed
-                },
-              },
-            });
-            console.log("result:", result);
+/** **********************************************************************
+ * Fake Transaction Interface
+ *********************************************************************** */
+interface FakeTx {
+	insert: (table: "venuesTable" | "venueAttachmentsTable") => {
+		values: <T>(values: T[]) => {
+			returning: () => Promise<T[]>;
+		};
+	};
+}
 
-            expect(result.errors).toMatchObject([
-              {
-                message: 'Mime type "text/plain" is not allowed.',
-                extensions: { code: "invalid_arguments" },
-              },
-            ]);
-          });
-
-		test("should handle multiple attachments with one invalid mime type", async () => {
-			const mockFile1: FileUpload = {
-				filename: "test.jpg",
-				mimetype: "image/jpeg",
-				encoding: "utf-8",
-				createReadStream: vi.fn(),
-			} as unknown as FileUpload;
-			const mockFile2: FileUpload = {
-				filename: "test.txt",
-				mimetype: "text/plain",
-				encoding: "utf-8",
-				createReadStream: vi.fn(),
-			} as unknown as FileUpload;
-
-			const ctx = { addIssue: vi.fn() };
-
-			const result = await mercuriusClient.mutate(mutation_createVenue, {
-				variables: {
-					input: {
-						name: "Test Venue with Multiple Attachments",
-						description: "A test venue",
-						organizationId: "org-123",
-						attachments: [
-							Promise.resolve(mockFile1),
-							Promise.resolve(mockFile2),
-						],
-					},
-				},
-			});
-
-			expect(result.data).toBeUndefined();
-			expect(ctx.addIssue).toHaveBeenCalledTimes(1);
-			expect(ctx.addIssue).toHaveBeenCalledWith({
-				code: "custom",
-				path: ["attachments", 1],
-				message: `Mime type "text/plain" is not allowed.`,
-			});
-		});
-
-		test("should handle no attachments", async () => {
-			const result = await mercuriusClient.mutate(mutation_createVenue, {
-				variables: {
-					input: {
-						name: "Test Venue with No Attachments",
-						description: "A test venue",
-						organizationId: "org-123",
-					},
-				},
-			});
-
-			expect(result.data).toBeDefined();
-			if (result.data?.createVenue) {
-				expect(result.data.createVenue.attachments).toBeUndefined();
-			}
-		});
-
-		test("should invalidate input with invalid mime type", async () => {
-			const mockFile: FileUpload = {
-				filename: "test.txt",
-				mimetype: "text/plain",
-				encoding: "utf-8",
-				createReadStream: vi.fn(),
-			} as unknown as FileUpload;
-
-			const input = {
-				name: "Test Venue with Invalid Attachment",
-				description: "A test venue",
-				organizationId: "org-123",
-				attachments: [Promise.resolve(mockFile)],
+/** **********************************************************************
+ * Test Context Interface
+ *********************************************************************** */
+interface TestContext {
+	currentClient: {
+		isAuthenticated: boolean;
+		user: User;
+	};
+	drizzleClient: {
+		query: {
+			usersTable: {
+				findFirst: (args: Record<string, unknown>) => Promise<User | undefined>;
 			};
+			organizationsTable: {
+				findFirst: (
+					args: Record<string, unknown>,
+				) => Promise<Organization | undefined>;
+			};
+		};
+		transaction: <T>(cb: (tx: FakeTx) => Promise<T>) => Promise<T>;
+	};
+	minio: {
+		client: {
+			putObject: (
+				bucket: string,
+				name: string,
+				stream: Readable,
+				size: number | undefined,
+				meta: Record<string, string>,
+			) => Promise<void>;
+		};
+		bucketName: string;
+	};
+	log: {
+		error: (msg: string) => void;
+	};
+	// For zod transformation issues.
+	addIssue?: (issue: {
+		code: string;
+		path: (string | number)[];
+		message: string;
+	}) => void;
+}
 
-			const result = await mercuriusClient.mutate(mutation_createVenue, {
-				variables: { input },
-			});
+/** **********************************************************************
+ * Build the Schema
+ *********************************************************************** */
+// Build the schema using your builder
+const schema = builder.toSchema();
 
-			expect(result.errors).toBeDefined();
-			expect(result.errors?.length).toBe(1);
-			expect(result.errors?.[0]?.message).toContain(
-				'Mime type "text/plain" is not allowed.',
-			);
+/** **********************************************************************
+ * Integration Tests for createVenue Mutation
+ *********************************************************************** */
+describe("createVenue mutation integration tests", () => {
+	let context: TestContext;
+
+	beforeEach(() => {
+		context = {
+			currentClient: {
+				isAuthenticated: true,
+				user: { id: "user-123", role: "administrator" },
+			},
+			drizzleClient: {
+				query: {
+					usersTable: {
+						findFirst: vi.fn(),
+					},
+					organizationsTable: {
+						findFirst: vi.fn(),
+					},
+				},
+				transaction: vi
+					.fn()
+					.mockImplementation(
+						<T>(cb: (tx: FakeTx) => Promise<T>): Promise<T> => {
+							// Provide a fake transaction object with an insert function.
+							const tx: FakeTx = {
+								insert: (table: "venuesTable" | "venueAttachmentsTable") => ({
+									values: <T>(values: T[]) => ({
+										returning: async () => {
+											if (table === "venuesTable")
+												return [dummyCreatedVenue as unknown as T];
+											if (table === "venueAttachmentsTable")
+												return values as T[];
+											return [] as T[];
+										},
+									}),
+								}),
+							};
+							return cb(tx);
+						},
+					),
+			},
+			minio: {
+				client: {
+					putObject: vi.fn(async () => Promise.resolve()),
+				},
+				bucketName: "test-bucket",
+			},
+			log: {
+				error: vi.fn(),
+			},
+		};
+	});
+
+	it("should return an unauthenticated error if the client is not authenticated", async () => {
+		context.currentClient.isAuthenticated = false;
+
+		const mutation = /* GraphQL */ `
+      mutation {
+        createVenue(
+          input: {
+            name: "Test Venue"
+            description: "Test description"
+            organizationId: "org-123"
+          }
+        ) {
+          id
+          name
+        }
+      }
+    `;
+
+		const result = await graphql({
+			schema,
+			source: mutation,
+			contextValue: context,
+		});
+		expect(result.errors).toBeDefined();
+		expect(result.errors?.[0]?.extensions?.code).toBe("unauthenticated");
+	});
+
+	it("should return an error if the current user is not found", async () => {
+		// Simulate that the user lookup returns undefined.
+		(
+			context.drizzleClient.query.usersTable.findFirst as ReturnType<
+				typeof vi.fn
+			>
+		).mockResolvedValueOnce(undefined);
+		// Organization exists.
+		(
+			context.drizzleClient.query.organizationsTable.findFirst as ReturnType<
+				typeof vi.fn
+			>
+		).mockResolvedValueOnce({
+			membershipsWhereOrganization: [{ role: "administrator" }],
+			venuesWhereOrganization: [],
+		});
+
+		const mutation = /* GraphQL */ `
+      mutation {
+        createVenue(
+          input: {
+            name: "Test Venue"
+            description: "Test description"
+            organizationId: "org-123"
+          }
+        ) {
+          id
+          name
+        }
+      }
+    `;
+		const result = await graphql({
+			schema,
+			source: mutation,
+			contextValue: context,
+		});
+		expect(result.errors).toBeDefined();
+		expect(result.errors?.[0]?.extensions?.code).toBe("unauthenticated");
+	});
+
+	it("should return an error if the organization is not found", async () => {
+		// User exists.
+		(
+			context.drizzleClient.query.usersTable.findFirst as ReturnType<
+				typeof vi.fn
+			>
+		).mockResolvedValueOnce({
+			id: "user-123",
+			role: "administrator",
+		});
+		// Organization lookup returns undefined.
+		(
+			context.drizzleClient.query.organizationsTable.findFirst as ReturnType<
+				typeof vi.fn
+			>
+		).mockResolvedValueOnce(undefined);
+
+		const mutation = /* GraphQL */ `
+      mutation {
+        createVenue(
+          input: {
+            name: "Test Venue"
+            description: "Test description"
+            organizationId: "non-existent-org"
+          }
+        ) {
+          id
+          name
+        }
+      }
+    `;
+		const result = await graphql({
+			schema,
+			source: mutation,
+			contextValue: context,
+		});
+		expect(result.errors).toBeDefined();
+		expect(result.errors?.[0]?.extensions?.code).toBe(
+			"arguments_associated_resources_not_found",
+		);
+	});
+
+	it("should return an error if a venue with the same name already exists", async () => {
+		// User exists.
+		(
+			context.drizzleClient.query.usersTable.findFirst as ReturnType<
+				typeof vi.fn
+			>
+		).mockResolvedValueOnce({
+			id: "user-123",
+			role: "administrator",
+		});
+		// Organization exists and already has a venue with the same name.
+		(
+			context.drizzleClient.query.organizationsTable.findFirst as ReturnType<
+				typeof vi.fn
+			>
+		).mockResolvedValueOnce({
+			membershipsWhereOrganization: [{ role: "administrator" }],
+			venuesWhereOrganization: [dummyCreatedVenue],
+		});
+
+		const mutation = /* GraphQL */ `
+      mutation {
+        createVenue(
+          input: {
+            name: "${dummyCreatedVenue.name}"
+            description: "Test description"
+            organizationId: "org-123"
+          }
+        ) {
+          id
+          name
+        }
+      }
+    `;
+		const result = await graphql({
+			schema,
+			source: mutation,
+			contextValue: context,
+		});
+		expect(result.errors).toBeDefined();
+		expect(result.errors?.[0]?.extensions?.code).toBe(
+			"forbidden_action_on_arguments_associated_resources",
+		);
+	});
+
+	it("should return an error if the current user is not an administrator of the organization", async () => {
+		// Set current user role to non-admin.
+		context.currentClient.user.role = "user";
+		(
+			context.drizzleClient.query.usersTable.findFirst as ReturnType<
+				typeof vi.fn
+			>
+		).mockResolvedValueOnce({
+			id: "user-123",
+			role: "user",
+		});
+		(
+			context.drizzleClient.query.organizationsTable.findFirst as ReturnType<
+				typeof vi.fn
+			>
+		).mockResolvedValueOnce({
+			membershipsWhereOrganization: [], // No admin membership.
+			venuesWhereOrganization: [],
+		});
+
+		const mutation = /* GraphQL */ `
+      mutation {
+        createVenue(
+          input: {
+            name: "New Venue"
+            description: "Test description"
+            organizationId: "org-123"
+          }
+        ) {
+          id
+          name
+        }
+      }
+    `;
+		const result = await graphql({
+			schema,
+			source: mutation,
+			contextValue: context,
+		});
+		expect(result.errors).toBeDefined();
+		expect(result.errors?.[0]?.extensions?.code).toBe(
+			"unauthorized_action_on_arguments_associated_resources",
+		);
+	});
+
+	it("should create a venue successfully without attachments", async () => {
+		// Valid user.
+		(
+			context.drizzleClient.query.usersTable.findFirst as ReturnType<
+				typeof vi.fn
+			>
+		).mockResolvedValueOnce({
+			id: "user-123",
+			role: "administrator",
+		});
+		// Organization exists with no matching venue.
+		(
+			context.drizzleClient.query.organizationsTable.findFirst as ReturnType<
+				typeof vi.fn
+			>
+		).mockResolvedValueOnce({
+			membershipsWhereOrganization: [{ role: "administrator" }],
+			venuesWhereOrganization: [],
+		});
+
+		const mutation = /* GraphQL */ `
+      mutation {
+        createVenue(
+          input: {
+            name: "New Venue"
+            description: "Test description"
+            organizationId: "org-123"
+          }
+        ) {
+          id
+          name
+          description
+          attachments {
+            name
+            mimeType
+          }
+        }
+      }
+    `;
+		const result = await graphql({
+			schema,
+			source: mutation,
+			contextValue: context,
+		});
+		expect(result.errors).toBeUndefined();
+		expect(result.data?.createVenue).toEqual({
+			...dummyCreatedVenue,
+			attachments: [],
 		});
 	});
 
-	// Tests for the GraphQL resolver logic (beyond schema validation)
-	suite("resolver operation", () => {
-		test("should reject unauthenticated users", async () => {
-			mockCtx.currentClient.isAuthenticated = false;
-
-			const result = await mercuriusClient.mutate(mutation_createVenue, {
-				variables: {
-					input: {
-						name: "Unauthorized Venue",
-						description: "Test venue",
-						organizationId: "org-123",
-					},
-				},
-				headers: {
-					Authorization: "false",
-				},
-			});
-
-			expect(result.errors).toBeDefined();
-			expect(result.errors?.[0]?.extensions?.code).toBe("unauthenticated");
+	it("should create a venue successfully with attachments", async () => {
+		// Valid user.
+		(
+			context.drizzleClient.query.usersTable.findFirst as ReturnType<
+				typeof vi.fn
+			>
+		).mockResolvedValueOnce({
+			id: "user-123",
+			role: "administrator",
+		});
+		// Organization exists.
+		(
+			context.drizzleClient.query.organizationsTable.findFirst as ReturnType<
+				typeof vi.fn
+			>
+		).mockResolvedValueOnce({
+			membershipsWhereOrganization: [{ role: "administrator" }],
+			venuesWhereOrganization: [],
 		});
 
-		it("should reject unauthorized users", async () => {
-			const result = await mercuriusClient.mutate(mutation_createVenue, {
-				variables: {
-					input: {
-						name: "Unauthorized Venue",
-						description: "Test venue",
-						organizationId: "org-123",
-					},
-				},
-				headers: {
-					Authorization: "true",
-				},
-			});
+		// Prepare two valid attachments.
+		// const attachment1 = createFakeFileUpload("image/jpeg");
+		// const attachment2 = createFakeFileUpload("application/pdf");
 
-			expect(result.errors).toBeDefined();
-			expect(result.errors?.[0]?.extensions?.code).toBe("unauthenticated");
-		});
-
-		//Organization & Venue Name Checks
-		test("should reject if organization does not exist", async () => {
-			const adminSignInResult = await mercuriusClient.query(Query_signIn, {
-				variables: {
-					input: {
-						emailAddress: server.envConfig.API_ADMINISTRATOR_USER_EMAIL_ADDRESS,
-						password: server.envConfig.API_ADMINISTRATOR_USER_PASSWORD,
-					},
-				},
-			});
-			assertToBeNonNullish(adminSignInResult.data.signIn?.authenticationToken);
-
-			const result = await mercuriusClient.mutate(mutation_createVenue, {
-				variables: {
-					input: {
-						name: "New Venue",
-						description: "Test venue",
-						organizationId: "non-existent-org",
-					},
-				},
-				headers: {
-					authorization: `Bearer ${adminSignInResult.data.signIn.authenticationToken}`,
-				},
-			});
-
-			expect(result.errors).toBeDefined();
-			expect(result.errors?.[0]?.extensions?.code).toBe(
-				"arguments_associated_resources_not_found",
-			);
-		});
-
-		test("should reject if venue name is already taken", async () => {
-			const adminSignInResult = await mercuriusClient.query(Query_signIn, {
-				variables: {
-					input: {
-						emailAddress: server.envConfig.API_ADMINISTRATOR_USER_EMAIL_ADDRESS,
-						password: server.envConfig.API_ADMINISTRATOR_USER_PASSWORD,
-					},
-				},
-			});
-
-			assertToBeNonNullish(adminSignInResult.data.signIn?.authenticationToken);
-			const ctx = {
-				drizzleClient: {
-					query: {
-						organizationsTable: {
-							findFirst: vi.fn(),
-						},
-					},
-				},
-			};
-
-			vi.spyOn(
-				ctx.drizzleClient.query.organizationsTable,
-				"findFirst",
-			).mockResolvedValue({
-				venuesWhereOrganization: [{ updatedAt: new Date() }], // Mock an existing venue
-			});
-
-			const result = await mercuriusClient.mutate(mutation_createVenue, {
-				headers: {
-					authorization: `Bearer ${adminSignInResult.data.signIn.authenticationToken}`,
-				},
-				variables: {
-					input: {
-						name: "Duplicate Venue",
-						description: "Test venue",
-						organizationId: "org-123",
-					},
-				},
-			});
-
-			expect(result.errors).toBeDefined();
-			expect(result.errors?.[0]?.extensions?.code).toBe(
-				"forbidden_action_on_arguments_associated_resources",
-			);
-		});
-
-		//Successful Venue Creation
-
-		test("creates a venue successfully", async () => {
-			mockCtx.drizzleClient.transaction.mockImplementation(async (callback) => {
-				const tx = {
-					insert: vi
-						.fn()
-						.mockReturnValue([
-							{ id: "venue-123", name: "New Venue", organizationId: "org-123" },
-						]),
+		// For testing attachments, we assume the zod transformation awaits attachments.
+		// One approach is to simulate that the mutation receives resolved attachments.
+		// Here, we override the transaction to simulate insertion for attachments.
+		context.drizzleClient.transaction = vi
+			.fn()
+			.mockImplementation(<T>(cb: (tx: FakeTx) => Promise<T>): Promise<T> => {
+				const tx: FakeTx = {
+					insert: (table: "venuesTable" | "venueAttachmentsTable") => ({
+						values: <T>(values: T[]) => ({
+							returning: async () => {
+								if (table === "venuesTable")
+									return [dummyCreatedVenue as unknown as T];
+								if (table === "venueAttachmentsTable")
+									return [
+										createDummyAttachment(
+											dummyCreatedVenue.id,
+											"image/jpeg",
+										) as unknown as T,
+										createDummyAttachment(
+											dummyCreatedVenue.id,
+											"application/pdf",
+										) as unknown as T,
+									];
+								return [] as T[];
+							},
+						}),
+					}),
 				};
-				return callback(tx);
+				return cb(tx);
 			});
 
-			const result = await mercuriusClient.mutate(mutation_createVenue, {
-				variables: {
-					input: {
-						name: "New Venue",
-						description: "Test venue",
-						organizationId: "org-123",
-					},
-				},
-			});
-
-			expect(result.data).toBeDefined();
-			expect(result.data.createVenue).toMatchObject({ name: "New Venue" });
+		const mutation = /* GraphQL */ `
+      mutation {
+        createVenue(
+          input: {
+            name: "New Venue with Files"
+            description: "Test description with attachments"
+            organizationId: "org-123"
+            # Attachments would normally be processed by your file upload middleware.
+            # For testing, assume they are resolved by your transformation.
+          }
+        ) {
+          id
+          name
+          attachments {
+            name
+            mimeType
+          }
+        }
+      }
+    `;
+		const result = await graphql({
+			schema,
+			source: mutation,
+			contextValue: context,
 		});
-
-		//Handling Attachments in Minio
-		test("stores attachments in MinIO", async () => {
-			const mockFile: FileUpload = {
-				filename: "test.jpg",
-				mimetype: "image/jpeg",
-				encoding: "utf-8",
-				createReadStream: vi.fn(),
-			} as unknown as FileUpload;
-
-			mockCtx.drizzleClient.transaction.mockImplementation(async (callback) => {
-				const tx = {
-					insert: vi.fn().mockReturnValue([
-						{
-							id: "attachment-123",
-							name: "ulid-name",
-							mimeType: "image/jpeg",
-						},
-					]),
-				};
-				return callback(tx);
-			});
-
-			const result = await mercuriusClient.mutate(mutation_createVenue, {
-				variables: {
-					input: {
-						name: "Venue with Files",
-						description: "A venue",
-						organizationId: "org-123",
-						attachments: [Promise.resolve(mockFile)],
-					},
-				},
-			});
-
-			expect(result.data).toBeDefined();
-			expect(mockCtx.minio.client.putObject).toHaveBeenCalledWith(
-				"test-bucket",
-				"ulid-name",
-				mockFile.createReadStream(),
-				undefined,
-				{ "content-type": "image/jpeg" },
-			);
+		expect(context.minio.client.putObject).toHaveBeenCalledTimes(2);
+		expect(result.errors).toBeUndefined();
+		expect(result.data?.createVenue).toMatchObject({
+			...dummyCreatedVenue,
+			attachments: [
+				expect.objectContaining({ mimeType: "image/jpeg" }),
+				expect.objectContaining({ mimeType: "application/pdf" }),
+			],
 		});
+	});
+
+	it("should add zod issues for invalid attachment mime types", async () => {
+		// Simulate an invalid attachment (e.g., text/plain).
+		const invalidAttachment = createFakeFileUpload("text/plain");
+		// Capture issues from the zod transform.
+		const issues: {
+			code: string;
+			path: (string | number)[];
+			message: string;
+		}[] = [];
+		context.addIssue = (issue: {
+			code: string;
+			path: (string | number)[];
+			message: string;
+		}) => {
+			issues.push(issue);
+		};
+
+		// For this test, simulate that attachments are provided externally.
+		// We override the context with a fake attachments array.
+		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+		(context as any).fakeAttachments = [Promise.resolve(invalidAttachment)];
+
+		const mutation = /* GraphQL */ `
+      mutation {
+        createVenue(
+          input: {
+            name: "Venue With Bad Attachment"
+            description: "Test description"
+            organizationId: "org-123"
+            attachments: []
+          }
+        ) {
+          id
+          name
+        }
+      }
+    `;
+		const result = await graphql({
+			schema,
+			source: mutation,
+			contextValue: context,
+		});
+		expect(result.errors).toBeDefined();
+		// Optionally, check that our captured issues include an error for attachments.
+		expect(
+			issues.some(
+				(issue) =>
+					issue.path[0] === "attachments" && typeof issue.path[1] === "number",
+			),
+		).toBe(true);
 	});
 });

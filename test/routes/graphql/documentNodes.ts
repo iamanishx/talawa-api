@@ -331,7 +331,7 @@ export const mutation_createVenue = gql(`
             postalCode
             postsCount
             state
-            updatedAt        }
+            updatedAt}
         attachments {   
          mimeType
          url

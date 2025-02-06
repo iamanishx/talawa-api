@@ -1,0 +1,127 @@
+[33ma1de4611a[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mdevelop-postgres[m[33m)[m Merge branch 'develop-postgres' of https://github.com/PalisadoesFoundation/talawa-api into develop-postgres
+[33m815c423c7[m[33m ([m[1;31morigin/develop-postgres[m[33m)[m Update package.json
+[33m397d44e55[m Update push-deploy-website.yml
+[33m38fafe212[m Update .gitignore
+[33m7b2952c68[m Update .gitignore
+[33mff6784bad[m Chore : Shifting from String to EmailAddress in Graphql Schema (#2986)
+[33me61296170[m Merge branch 'develop-postgres' of https://github.com/PalisadoesFoundation/talawa-api into develop-postgres
+[33m2f2259579[m Saving local changes before pulling updates
+[33mee24a9585[m Update installation.md
+[33m8e74cfe1c[m Test: src/graphql/types/Community/updater.ts (#3110)
+[33m19b4d1eab[m Added testing queries (#3134)
+[33m0766ee6bd[m Update devcontainer.json
+[33m1f2a2fe23[m Revert "Revert "chore(deps): bump drizzle-seed from 0.3.0 to 0.3.1 (#3116)" (…" (#3133)
+[33mbb693465f[m Revert "Revert "chore(deps): bump drizzle-kit from 0.30.2 to 0.30.4 (#3115)" …" (#3132)
+[33mcecbf218d[m Revert "Revert "chore(deps): bump drizzle-orm from 0.38.4 to 0.39.1 (#3114)" …" (#3131)
+[33m893576c8e[m Revert "Revert "chore(deps): bump minio from 8.0.3 to 8.0.4 (#3113)" (#3125)" (#3130)
+[33mcedc046b5[m Revert "Revert "chore(deps): bump @sinclair/typebox from 0.34.14 to 0.34.15 (…" (#3129)
+[33m98012eabc[m Revert "Revert "initializeCommand modified (#3119)" (#3127)" (#3128)
+[33ma678bbaba[m Revert "initializeCommand modified (#3119)" (#3127)
+[33m2273a90bc[m Revert "chore(deps): bump @sinclair/typebox from 0.34.14 to 0.34.15 (#3112)" (#3126)
+[33m72f3a08a1[m Revert "chore(deps): bump minio from 8.0.3 to 8.0.4 (#3113)" (#3125)
+[33ma3a1c8537[m Revert "chore(deps): bump drizzle-orm from 0.38.4 to 0.39.1 (#3114)" (#3124)
+[33m24c2b1d55[m Revert "chore(deps): bump drizzle-kit from 0.30.2 to 0.30.4 (#3115)" (#3123)
+[33mb66eb137f[m Revert "chore(deps): bump drizzle-seed from 0.3.0 to 0.3.1 (#3116)" (#3122)
+[33m6689893f2[m Update testing.md
+[33me2151ff48[m fixed : #2841 NoMongo: Create an equivalent sample database for importation by the setup script  (#3118)
+[33mb47319a45[m initializeCommand modified (#3119)
+[33m14d043b3d[m Add files via upload
+[33mf3dd97e09[m Delete renovate.json
+[33m54c63f186[m Create renovate.json
+[33m2e9523e57[m chore(deps): bump drizzle-seed from 0.3.0 to 0.3.1 (#3116)
+[33mf1d1a4237[m chore(deps): bump drizzle-kit from 0.30.2 to 0.30.4 (#3115)
+[33m1986e0f50[m chore(deps): bump drizzle-orm from 0.38.4 to 0.39.1 (#3114)
+[33mdb7927161[m chore(deps): bump minio from 8.0.3 to 8.0.4 (#3113)
+[33mb8b05206c[m chore(deps): bump @sinclair/typebox from 0.34.14 to 0.34.15 (#3112)
+[33m5156873e3[m Update testing.md
+[33m6683e629a[m Creator vitest (#3109)
+[33m80fea2a2f[m Updated API_ADMINISTRATOR_USER_EMAIL_ADDRESS documentation (#3107)
+[33mdb134857d[m Updated docs for testing (#3106)
+[33mec5a66113[m Update .env.devcontainer
+[33ma7a43663a[m Update installation.md
+[33mf9f22d594[m Fixed installation documentation (#3101)
+[33ma2b736c16[m Updated documentation for devcontainers (#3100)
+[33m5ce616529[m Delete public directory
+[33m74730b2ba[m updated documentation (#3099)
+[33m526b51eb4[m Fix Talawa title colour bug (#3095)
+[33m7d4f843b6[m Feature/ux improvements - This PR updates a line from PR #3091 causing wrong brand color. Apologies for the oversight! (#3092)
+[33m332a9576e[m Feature/ux improvements (#3091)
+[33m33b838a2a[m Added pages (#3049)
+[33m64e2efcd0[m Added new documentation (#2970)
+[33m28859b239[m Feature/ux improvements (#2968)
+[33m425af2449[m Add files via upload
+[33mc896480bd[m fixes: long-title/consistent sideber ui (#2916)
+[33m836c461dd[m Added online installation documentation (#2912)
+[33m6c201affe[m Added corrections (#2895)
+[33m3af249531[m Codecov work (#2891)
+[33med57c249b[m Codecov work (#2888)
+[33mf04c38e3f[m Added codecov code for showing statistics (#2877)
+[33m613712e53[m add user's preferred natural language implementation (#2887)
+[33mbe91d2c6f[m Update pull-request.yml
+[33mb660dbe8b[m fixes related to messages, comments and naming conventions (#2882)
+[33m3732dad77[m Added new homepage (#2878)
+[33m8722d6312[m handle error in seedInitialData fastify plugin (#2880)
+[33mfe4b10c35[m Updated CSS Heading Color Palette (#2876)
+[33m8edc4a217[m elevate existing initial administrator user's role (#2875)
+[33m1a88e1581[m added codecov code for showing statistics (#2871)
+[33m08626e370[m Update push-deploy-website.yml
+[33m1f60b24e7[m allow hot reloading `api` devcontainer environment variables (#2872)
+[33m9b3160229[m Revert "Feature/Create systemd to run talawa-api service . (#2870)" (#2874)
+[33md4745722a[m add implementation for global community data (#2866)
+[33mbf48b6a46[m Feature/Create systemd to run talawa-api service . (#2870)
+[33mbca3cb5df[m update-env-Files-configurations-from-8080-to-4000 (#2867)
+[33mf4a1a0a89[m feat UI: Styling changes (#2826)
+[33meb9819f23[m Update pull-request.yml
+[33mb308fb498[m replace address with address lines 1 & 2 (#2863)
+[33m23a253399[m Update pull-request.yml
+[33mcaf84e606[m Update .gitignore
+[33m21bb58392[m fix apply drizzle migrations env (#2859)
+[33m3e1922ee7[m fix postgres test env file, remove sign up confirm password input (#2858)
+[33m79d896a68[m Update .gitignore
+[33m80bb6d3b4[m Update push-deploy-website.yml
+[33mf0c2d51c9[m Update .gitignore
+[33m8a5b43e88[m Added GitHub Actions python script linter (#2850)
+[33m61a8aa544[m Update .coderabbit.yaml
+[33m2e0945ce2[m Update INSTALLATION.md
+[33m0a1d442b9[m Update pull-request.yml
+[33md4f0da7f3[m Update INSTALLATION.md
+[33maa7e208ae[m :fix devcontainer, add documentation (#2836)
+[33m0b2dcfdd9[m  Biome linting disable check script (#2827)
+[33m558d67f7d[m Update pull-request.yml
+[33ma52490cd0[m Create validate-coderabbit.sh
+[33mbb65c6682[m Update pull-request.yml
+[33m98670f5ee[m update drizzle-zod (#2819)
+[33m9a5a8c6bd[m add minio implementation (#2817)
+[33m8bdf2f455[m Update pull-request.yml
+[33m3722be293[m Update pull-request.yml
+[33m442d85c9f[m Fixed pnpm 'Unexpected input' deployment error (#2815)
+[33mf8416f13b[m Fixed Deploy v1 (#2814)
+[33m6bc9ffbf2[m Updated pnpm package Mon Dec 30 06:15:43 PM PST 2024 (#2813)
+[33me553e798e[m Added Docusaurus files (#2812)
+[33m46b910e1a[m Added disable check scripts (#2811)
+[33m11e11213e[m add tag folder, event, venue, agenda folder, agenda item graphql implementation (#2793)
+[33m3b55f700d[m Update pull-request.yml
+[33m6b004cd95[m add fund, fund campaign, fund campaign pledge, chat, chat membership and chat message graphql implementation (#2755)
+[33m06a5ccb33[m Update README.md
+[33m5bb3d4b5b[m Update README.md
+[33mc683fd853[m add graphql implementation for post comments (#2741)
+[33md6ed32024[m Create .node-version
+[33m9cacf3ffd[m Update pull-request-target.yml
+[33m394bce1fe[m Update pull-request-target.yml
+[33m912477405[m add graphql implementation for handling user authentication and user read/write functionalities (#2698)
+[33m5038e4349[m Update GitHub actions (#2700)
+[33mae44c6446[m Update all GitHub Actions to the latest versions (#2690)
+[33mf338cc524[m Feat: changed pr template to add the checklist. (#2695)
+[33m670da1574[m chore(deps): bump @swc/core from 1.7.36 to 1.9.2 (#2675)
+[33m08c4f90e1[m chore(deps): bump vite-tsconfig-paths from 5.0.1 to 5.1.2 (#2674)
+[33m51decf518[m chore(deps): bump @fastify/rate-limit from 10.1.1 to 10.2.0 (#2673)
+[33m01f6a9ca8[m Update dependabot.yaml
+[33m9b6c9d0aa[m Update dependabot.yaml
+[33m8008d7050[m Update pull-request.yml
+[33mc929680f7[m Rename stale.yaml to stale.yml
+[33ma43954d9b[m Rename pull-request.yaml to pull-request.yml
+[33mcd2c4c717[m Rename pull-request-target.yaml to pull-request-target.yml
+[33m0b828c987[m Rename issue.yaml to issue.yml
+[33m3bbcb2dc2[m Rename codeql-codescan.yaml to codeql-codescan.yml
+[33m0ea3efc16[m get the dev-postgres branch to the minimal base state (#2597)
+[33mb4099b995[m Added Sample Data For AgendaCategory & Remov
