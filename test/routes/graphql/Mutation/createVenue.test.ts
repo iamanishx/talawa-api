@@ -2,7 +2,7 @@ import { Readable } from "node:stream";
 import { GraphQLScalarType, graphql } from "graphql";
 import type { FileUpload } from "graphql-upload-minimal"; // Import the correct FileUpload type
 import { ulid } from "ulidx";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, expect, suite, vi } from "vitest";
 
 vi.mock("ulidx", () => ({ ulid: vi.fn(() => "mocked-ulid") }));
 
@@ -219,7 +219,7 @@ const schema = builder.toSchema();
 /** **********************************************************************
  * Integration Tests for createVenue Mutation
  *********************************************************************** */
-describe("createVenue mutation integration tests", () => {
+suite("createVenue mutation integration tests", () => {
 	let context: TestContext;
 
 	beforeEach(() => {
@@ -271,10 +271,12 @@ describe("createVenue mutation integration tests", () => {
 		};
 	});
 
-	it("should return an unauthenticated error if the client is not authenticated", async () => {
-		context.currentClient.isAuthenticated = false;
+	suite(
+		"should return an unauthenticated error if the client is not authenticated",
+		async () => {
+			context.currentClient.isAuthenticated = false;
 
-		const mutation = /* GraphQL */ `
+			const mutation = /* GraphQL */ `
       mutation {
         createVenue(
           input: {
@@ -289,16 +291,17 @@ describe("createVenue mutation integration tests", () => {
       }
     `;
 
-		const result = await graphql({
-			schema,
-			source: mutation,
-			contextValue: context,
-		});
-		expect(result.errors).toBeDefined();
-		expect(result.errors?.[0]?.extensions?.code).toBe("unauthenticated");
-	});
+			const result = await graphql({
+				schema,
+				source: mutation,
+				contextValue: context,
+			});
+			expect(result.errors).toBeDefined();
+			expect(result.errors?.[0]?.extensions?.code).toBe("unauthenticated");
+		},
+	);
 
-	it("should return an error if the current user is not found", async () => {
+	suite("should return an error if the current user is not found", async () => {
 		// Simulate that the user lookup returns undefined.
 		(
 			context.drizzleClient.query.usersTable.findFirst as ReturnType<
@@ -338,7 +341,7 @@ describe("createVenue mutation integration tests", () => {
 		expect(result.errors?.[0]?.extensions?.code).toBe("unauthenticated");
 	});
 
-	it("should return an error if the organization is not found", async () => {
+	suite("should return an error if the organization is not found", async () => {
 		// User exists.
 		(
 			context.drizzleClient.query.usersTable.findFirst as ReturnType<
@@ -380,27 +383,29 @@ describe("createVenue mutation integration tests", () => {
 		);
 	});
 
-	it("should return an error if a venue with the same name already exists", async () => {
-		// User exists.
-		(
-			context.drizzleClient.query.usersTable.findFirst as ReturnType<
-				typeof vi.fn
-			>
-		).mockResolvedValueOnce({
-			id: "user-123",
-			role: "administrator",
-		});
-		// Organization exists and already has a venue with the same name.
-		(
-			context.drizzleClient.query.organizationsTable.findFirst as ReturnType<
-				typeof vi.fn
-			>
-		).mockResolvedValueOnce({
-			membershipsWhereOrganization: [{ role: "administrator" }],
-			venuesWhereOrganization: [dummyCreatedVenue],
-		});
+	suite(
+		"should return an error if a venue with the same name already exists",
+		async () => {
+			// User exists.
+			(
+				context.drizzleClient.query.usersTable.findFirst as ReturnType<
+					typeof vi.fn
+				>
+			).mockResolvedValueOnce({
+				id: "user-123",
+				role: "administrator",
+			});
+			// Organization exists and already has a venue with the same name.
+			(
+				context.drizzleClient.query.organizationsTable.findFirst as ReturnType<
+					typeof vi.fn
+				>
+			).mockResolvedValueOnce({
+				membershipsWhereOrganization: [{ role: "administrator" }],
+				venuesWhereOrganization: [dummyCreatedVenue],
+			});
 
-		const mutation = /* GraphQL */ `
+			const mutation = /* GraphQL */ `
       mutation {
         createVenue(
           input: {
@@ -414,38 +419,41 @@ describe("createVenue mutation integration tests", () => {
         }
       }
     `;
-		const result = await graphql({
-			schema,
-			source: mutation,
-			contextValue: context,
-		});
-		expect(result.errors).toBeDefined();
-		expect(result.errors?.[0]?.extensions?.code).toBe(
-			"forbidden_action_on_arguments_associated_resources",
-		);
-	});
+			const result = await graphql({
+				schema,
+				source: mutation,
+				contextValue: context,
+			});
+			expect(result.errors).toBeDefined();
+			expect(result.errors?.[0]?.extensions?.code).toBe(
+				"forbidden_action_on_arguments_associated_resources",
+			);
+		},
+	);
 
-	it("should return an error if the current user is not an administrator of the organization", async () => {
-		// Set current user role to non-admin.
-		context.currentClient.user.role = "user";
-		(
-			context.drizzleClient.query.usersTable.findFirst as ReturnType<
-				typeof vi.fn
-			>
-		).mockResolvedValueOnce({
-			id: "user-123",
-			role: "user",
-		});
-		(
-			context.drizzleClient.query.organizationsTable.findFirst as ReturnType<
-				typeof vi.fn
-			>
-		).mockResolvedValueOnce({
-			membershipsWhereOrganization: [], // No admin membership.
-			venuesWhereOrganization: [],
-		});
+	suite(
+		"should return an error if the current user is not an administrator of the organization",
+		async () => {
+			// Set current user role to non-admin.
+			context.currentClient.user.role = "user";
+			(
+				context.drizzleClient.query.usersTable.findFirst as ReturnType<
+					typeof vi.fn
+				>
+			).mockResolvedValueOnce({
+				id: "user-123",
+				role: "user",
+			});
+			(
+				context.drizzleClient.query.organizationsTable.findFirst as ReturnType<
+					typeof vi.fn
+				>
+			).mockResolvedValueOnce({
+				membershipsWhereOrganization: [], // No admin membership.
+				venuesWhereOrganization: [],
+			});
 
-		const mutation = /* GraphQL */ `
+			const mutation = /* GraphQL */ `
       mutation {
         createVenue(
           input: {
@@ -459,18 +467,19 @@ describe("createVenue mutation integration tests", () => {
         }
       }
     `;
-		const result = await graphql({
-			schema,
-			source: mutation,
-			contextValue: context,
-		});
-		expect(result.errors).toBeDefined();
-		expect(result.errors?.[0]?.extensions?.code).toBe(
-			"unauthorized_action_on_arguments_associated_resources",
-		);
-	});
+			const result = await graphql({
+				schema,
+				source: mutation,
+				contextValue: context,
+			});
+			expect(result.errors).toBeDefined();
+			expect(result.errors?.[0]?.extensions?.code).toBe(
+				"unauthorized_action_on_arguments_associated_resources",
+			);
+		},
+	);
 
-	it("should create a venue successfully without attachments", async () => {
+	suite("should create a venue successfully without attachments", async () => {
 		// Valid user.
 		(
 			context.drizzleClient.query.usersTable.findFirst as ReturnType<
@@ -521,7 +530,7 @@ describe("createVenue mutation integration tests", () => {
 		});
 	});
 
-	it("should create a venue successfully with attachments", async () => {
+	suite("should create a venue successfully with attachments", async () => {
 		// Valid user.
 		(
 			context.drizzleClient.query.usersTable.findFirst as ReturnType<
@@ -612,7 +621,7 @@ describe("createVenue mutation integration tests", () => {
 		});
 	});
 
-	it("should add zod issues for invalid attachment mime types", async () => {
+	suite("should add zod issues for invalid attachment mime types", async () => {
 		// Simulate an invalid attachment (e.g., text/plain).
 		const invalidAttachment = createFakeFileUpload("text/plain");
 		// Capture issues from the zod transform.
