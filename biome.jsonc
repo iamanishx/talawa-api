@@ -27,10 +27,7 @@
 		// https://biomejs.dev/reference/configuration/#linterenabled
 		"enabled": true
 	},
-	"formatter": {
-		"enabled": true, // ✅ Enables Prettier-like formatting
-		"formatWithErrors": true // ⚠️ Prevents commits if formatting fails
-	},
+
 	// https://biomejs.dev/reference/configuration/#vcs
 	"organizeImports": {
 		// https://biomejs.dev/reference/configuration/#organizeimportsenabled

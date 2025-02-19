@@ -9,28 +9,22 @@ import {
 import { ChatMessage } from "~/src/graphql/types/ChatMessage/ChatMessage";
 import { TalawaGraphQLError } from "~/src/utilities/TalawaGraphQLError";
 import type { GraphQLContext } from "../../context";
-
 const mutationDeleteChatMessageArgumentsSchema = z.object({
 	input: mutationDeleteChatMessageInputSchema,
 });
-
 export async function deleteChatMessageResolver(
 	_parent: unknown,
 	args: z.infer<typeof mutationDeleteChatMessageArgumentsSchema>,
 	ctx: GraphQLContext,
 ) {
 	if (!ctx.currentClient.isAuthenticated) {
-		throw new TalawaGraphQLError({
-			extensions: { code: "unauthenticated" },
-		});
+		throw new TalawaGraphQLError({ extensions: { code: "unauthenticated" } });
 	}
-
 	const {
 		success,
 		data: parsedArgs,
 		error,
 	} = mutationDeleteChatMessageArgumentsSchema.safeParse(args);
-
 	if (!success) {
 		throw new TalawaGraphQLError({
 			extensions: {
@@ -42,9 +36,7 @@ export async function deleteChatMessageResolver(
 			},
 		});
 	}
-
 	const currentUserId = ctx.currentClient.user.id;
-
 	const [currentUser, existingChatMessage] = await Promise.all([
 		ctx.drizzleClient.query.usersTable.findFirst({
 			columns: { role: true },
@@ -79,13 +71,9 @@ export async function deleteChatMessageResolver(
 				operators.eq(fields.id, parsedArgs.input.id),
 		}),
 	]);
-
 	if (currentUser === undefined) {
-		throw new TalawaGraphQLError({
-			extensions: { code: "unauthenticated" },
-		});
+		throw new TalawaGraphQLError({ extensions: { code: "unauthenticated" } });
 	}
-
 	if (existingChatMessage === undefined) {
 		throw new TalawaGraphQLError({
 			extensions: {
@@ -98,7 +86,6 @@ export async function deleteChatMessageResolver(
 		existingChatMessage.chat.organization.membershipsWhereOrganization[0];
 	const currentUserChatMembership =
 		existingChatMessage.chat.chatMembershipsWhereChat[0];
-
 	if (
 		currentUser.role !== "administrator" &&
 		(currentUserOrganizationMembership === undefined ||
@@ -114,27 +101,19 @@ export async function deleteChatMessageResolver(
 			},
 		});
 	}
-
 	const [deletedChatMessage] = await ctx.drizzleClient
 		.delete(chatMessagesTable)
 		.where(eq(chatMessagesTable.id, parsedArgs.input.id))
 		.returning();
-
 	if (deletedChatMessage === undefined) {
-		throw new TalawaGraphQLError({
-			extensions: { code: "unexpected" },
-		});
+		throw new TalawaGraphQLError({ extensions: { code: "unexpected" } });
 	}
-
 	ctx.pubsub.publish({
 		payload: deletedChatMessage,
 		topic: `chats.${deletedChatMessage.chatId}:chat_messages::create`,
 	});
-
 	return deletedChatMessage;
 }
-
-// Register the mutation resolver with the builder.
 builder.mutationField("deleteChatMessage", (t) =>
 	t.field({
 		args: {
@@ -149,3 +128,4 @@ builder.mutationField("deleteChatMessage", (t) =>
 		type: ChatMessage,
 	}),
 );
+//testing
