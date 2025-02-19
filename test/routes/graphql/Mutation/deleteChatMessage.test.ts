@@ -57,7 +57,7 @@ interface ChatMessage {
 		organization: { membershipsWhereOrganization: { role: string }[] };
 		chatMembershipsWhereChat: { role: string }[];
 	};
-}
+} //testing
 
 interface TestChatMessage extends ChatMessage {
 	chatId: string;

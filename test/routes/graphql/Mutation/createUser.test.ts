@@ -36,7 +36,6 @@ suite("Mutation field createUser", () => {
 						},
 					},
 				);
-				//testing
 				expect(createUserResult.data.createUser).toEqual(null);
 				expect(createUserResult.errors).toEqual(
 					expect.arrayContaining<TalawaGraphQLFormattedError>([
