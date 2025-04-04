@@ -1,11 +1,21 @@
 import { relations, sql } from "drizzle-orm";
-import { index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+	type AnyPgColumn,
+	boolean,
+	index,
+	pgTable,
+	text,
+	timestamp,
+	uuid,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { uuidv7 } from "uuidv7";
+import { z } from "zod";
 import { agendaFoldersTable } from "./agendaFolders";
 import { eventAttachmentsTable } from "./eventAttachments";
 import { eventAttendancesTable } from "./eventAttendances";
 import { organizationsTable } from "./organizations";
+import { recurrenceRulesTable } from "./recurrenceRules";
 import { usersTable } from "./users";
 import { venueBookingsTable } from "./venueBookings";
 
@@ -86,6 +96,40 @@ export const eventsTable = pgTable(
 			onDelete: "set null",
 			onUpdate: "cascade",
 		}),
+
+		/**
+		 * Indicates if this event is part of a recurring series.
+		 */
+		isRecurring: boolean("is_recurring").notNull().default(false),
+
+		/**
+		 * Indicates if this is the base template event for a recurring series.
+		 */
+		isBaseRecurringEvent: boolean("is_base_recurring_event")
+			.notNull()
+			.default(false),
+
+		/**
+		 * Foreign key reference to the id of the base recurring event this instance belongs to.
+		 */
+		baseRecurringEventId: uuid("base_recurring_event_id").references(
+			(): AnyPgColumn => eventsTable.id, // Use AnyPgColumn type annotation
+			{
+				onDelete: "cascade",
+				onUpdate: "cascade",
+			},
+		),
+
+		/**
+		 * Foreign key reference to the id of the recurrence rule that defines this recurring event.
+		 */
+		recurrenceRuleId: uuid("recurrence_rule_id").references(
+			(): AnyPgColumn => recurrenceRulesTable.id,
+			{
+				onDelete: "cascade",
+				onUpdate: "cascade",
+			},
+		),
 	},
 	(self) => [
 		index().on(self.createdAt),
@@ -94,6 +138,9 @@ export const eventsTable = pgTable(
 		index().on(self.name),
 		index().on(self.organizationId),
 		index().on(self.startAt),
+		index().on(self.isRecurring),
+		index().on(self.baseRecurringEventId),
+		index().on(self.recurrenceRuleId),
 	],
 );
 
@@ -146,9 +193,36 @@ export const eventsTableRelations = relations(eventsTable, ({ many, one }) => ({
 	venueBookingsWhereEvent: many(venueBookingsTable, {
 		relationName: "events.id:venue_bookings.event_id",
 	}),
-}));
+	/**
+	 * Many to one relationship from `events` table to `recurrence_rules` table.
+	 */
+	recurrenceRule: one(recurrenceRulesTable, {
+		fields: [eventsTable.recurrenceRuleId],
+		references: [recurrenceRulesTable.id],
+		relationName: "events.recurrence_rule_id:recurrence_rules.id",
+	}),
 
+	/**
+	 * Many to one relationship from `events` table to `events` table (self-reference for recurring instances).
+	 */
+	baseRecurringEvent: one(eventsTable, {
+		fields: [eventsTable.baseRecurringEventId],
+		references: [eventsTable.id],
+		relationName: "events.base_recurring_event_id:events.id",
+	}),
+
+	/**
+	 * One to many relationship from `events` table to `events` table (recurring instances).
+	 */
+	recurringInstances: many(eventsTable, {
+		relationName: "events.base_recurring_event_id:events.id",
+	}),
+}));
 export const eventsTableInsertSchema = createInsertSchema(eventsTable, {
-	description: (schema) => schema.min(1).max(2048).optional(),
-	name: (schema) => schema.min(1).max(256),
+	description: () => z.string().min(1).max(2048).optional(),
+	name: () => z.string().min(1).max(256),
+	isRecurring: () => z.boolean().default(false).optional(),
+	isBaseRecurringEvent: () => z.boolean().default(false).optional(),
+	baseRecurringEventId: () => z.string().uuid().optional(),
+	recurrenceRuleId: () => z.string().uuid().optional(),
 });

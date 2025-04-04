@@ -551,6 +551,9 @@ type Event {
   """Array of attachments."""
   attachments: [EventAttachment!]
 
+  """ID of the base recurring event this instance belongs to."""
+  baseRecurringEventId: ID
+
   """Date time at the time the event was created."""
   createdAt: DateTime
 
@@ -566,11 +569,23 @@ type Event {
   """Global identifier of the event."""
   id: ID!
 
+  """Whether this event is a base recurring event template."""
+  isBaseRecurringEvent: Boolean!
+
+  """Whether this event is recurring."""
+  isRecurring: Boolean!
+
   """Name of the event."""
   name: String
 
   """Organization the event belongs to."""
   organization: Organization
+
+  """Recurrence rule that defines this recurring event pattern."""
+  recurrenceRule: RecurrenceRule
+
+  """ID of the recurrence rule that defines this recurring event."""
+  recurrenceRuleId: ID
 
   """Date time at the time the event starts at."""
   startAt: DateTime
@@ -1874,6 +1889,9 @@ input MutationCreateEventInput {
 
   """Global identifier of the associated organization."""
   organizationId: ID!
+
+  """Recurrence pattern for creating recurring events"""
+  recurrence: RecurrenceInput
 
   """Date time at the time the event starts at."""
   startAt: DateTime!
@@ -3528,6 +3546,70 @@ input QueryUserInput {
 input QueryVenueInput {
   """Global id of the venue."""
   id: String!
+}
+
+enum RecurrenceFrequency {
+  DAILY
+  MONTHLY
+  WEEKLY
+  YEARLY
+}
+
+"""Input for defining a recurrence pattern"""
+input RecurrenceInput {
+  """Days of week (MO,TU,WE,TH,FR,SA,SU)"""
+  byDay: [String!]
+
+  """Months (1-12)"""
+  byMonth: [Int!]
+
+  """Days of month (1-31)"""
+  byMonthDay: [Int!]
+
+  """Total number of occurrences"""
+  count: Int
+
+  """Frequency of the recurrence"""
+  frequency: RecurrenceFrequency!
+
+  """Interval between recurrences (e.g., every 2 weeks)"""
+  interval: Int! = 1
+
+  """Date when recurrence ends"""
+  recurrenceEndDate: DateTime
+}
+
+"""Rules for defining recurring event patterns"""
+type RecurrenceRule {
+  """Days of week for recurrence (e.g., MO, WE, FR)."""
+  byDay: [String!]
+
+  """Months for recurrence (e.g., 1, 6, 12)."""
+  byMonth: [Int!]
+
+  """Days of month for recurrence."""
+  byMonthDay: [Int!]
+
+  """Total number of occurrences."""
+  count: Int
+
+  """Frequency of the recurrence (DAILY, WEEKLY, MONTHLY, YEARLY)."""
+  frequency: String!
+
+  """Global identifier of the recurrence rule."""
+  id: ID!
+
+  """Interval between recurrences (e.g., every 2 weeks)."""
+  interval: Int!
+
+  """Date time at which the recurrence pattern ends."""
+  recurrenceEndDate: DateTime
+
+  """The complete RRule string representation."""
+  recurrenceRuleString: String!
+
+  """Date time at which the recurrence pattern starts."""
+  recurrenceStartDate: DateTime!
 }
 
 type RejectMembershipResponse {

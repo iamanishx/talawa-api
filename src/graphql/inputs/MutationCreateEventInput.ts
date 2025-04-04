@@ -2,6 +2,10 @@ import type { FileUpload } from "graphql-upload-minimal";
 import { z } from "zod";
 import { eventsTableInsertSchema } from "~/src/drizzle/tables/events";
 import { builder } from "~/src/graphql/builder";
+import {
+	RecurrenceInput,
+	recurrenceInputSchema,
+} from "./MutationCreateRecurrenceInput";
 
 export const mutationCreateEventInputSchema = eventsTableInsertSchema
 	.pick({
@@ -18,6 +22,7 @@ export const mutationCreateEventInputSchema = eventsTableInsertSchema
 			.min(1)
 			.max(20)
 			.optional(),
+		recurrence: recurrenceInputSchema.optional(),
 	})
 	.superRefine((arg, ctx) => {
 		if (arg.endAt <= arg.startAt) {
@@ -60,6 +65,11 @@ export const MutationCreateEventInput = builder
 				description: "Date time at the time the event starts at.",
 				required: true,
 				type: "DateTime",
+			}),
+			recurrence: t.field({
+				type: RecurrenceInput,
+				description: "Recurrence pattern for creating recurring events",
+				required: false,
 			}),
 		}),
 	});

@@ -14,7 +14,7 @@ CREATE TABLE "actions" (
 	"assigned_at" timestamp (3) with time zone NOT NULL,
 	"actor_id" uuid,
 	"category_id" uuid,
-	"completion_at" timestamp (3) with time zone NOT NULL,
+	"completion_at" timestamp (3) with time zone,
 	"created_at" timestamp (3) with time zone DEFAULT now() NOT NULL,
 	"creator_id" uuid,
 	"event_id" uuid,
@@ -189,7 +189,11 @@ CREATE TABLE "events" (
 	"organization_id" uuid NOT NULL,
 	"start_at" timestamp (3) with time zone NOT NULL,
 	"updated_at" timestamp (3) with time zone,
-	"updater_id" uuid
+	"updater_id" uuid,
+	"is_recurring" boolean DEFAULT false NOT NULL,
+	"is_base_recurring_event" boolean DEFAULT false NOT NULL,
+	"base_recurring_event_id" uuid,
+	"recurrence_rule_id" uuid
 );
 --> statement-breakpoint
 CREATE TABLE "families" (
@@ -319,6 +323,26 @@ CREATE TABLE "posts" (
 	"id" uuid PRIMARY KEY NOT NULL,
 	"organization_id" uuid NOT NULL,
 	"pinned_at" timestamp (3) with time zone,
+	"updated_at" timestamp (3) with time zone,
+	"updater_id" uuid
+);
+--> statement-breakpoint
+CREATE TABLE "recurrence_rules" (
+	"created_at" timestamp (3) with time zone DEFAULT now() NOT NULL,
+	"creator_id" uuid,
+	"recurrence_rule_string" text NOT NULL,
+	"recurrence_start_date" timestamp (3) with time zone NOT NULL,
+	"recurrence_end_date" timestamp (3) with time zone,
+	"frequency" text NOT NULL,
+	"interval" integer DEFAULT 1 NOT NULL,
+	"count" integer,
+	"by_day" text[],
+	"by_month" integer[],
+	"by_month_day" integer[],
+	"id" uuid PRIMARY KEY NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"base_recurring_event_id" uuid NOT NULL,
+	"latest_instance_date" timestamp (3) with time zone NOT NULL,
 	"updated_at" timestamp (3) with time zone,
 	"updater_id" uuid
 );
@@ -486,6 +510,8 @@ ALTER TABLE "event_attendances" ADD CONSTRAINT "event_attendances_updater_id_use
 ALTER TABLE "events" ADD CONSTRAINT "events_creator_id_users_id_fk" FOREIGN KEY ("creator_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "events" ADD CONSTRAINT "events_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "events" ADD CONSTRAINT "events_updater_id_users_id_fk" FOREIGN KEY ("updater_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "events" ADD CONSTRAINT "events_base_recurring_event_id_events_id_fk" FOREIGN KEY ("base_recurring_event_id") REFERENCES "public"."events"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "events" ADD CONSTRAINT "events_recurrence_rule_id_recurrence_rules_id_fk" FOREIGN KEY ("recurrence_rule_id") REFERENCES "public"."recurrence_rules"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "families" ADD CONSTRAINT "families_creator_id_users_id_fk" FOREIGN KEY ("creator_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "families" ADD CONSTRAINT "families_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "families" ADD CONSTRAINT "families_updater_id_users_id_fk" FOREIGN KEY ("updater_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE cascade;--> statement-breakpoint
@@ -519,6 +545,10 @@ ALTER TABLE "post_votes" ADD CONSTRAINT "post_votes_post_id_posts_id_fk" FOREIGN
 ALTER TABLE "posts" ADD CONSTRAINT "posts_creator_id_users_id_fk" FOREIGN KEY ("creator_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "posts" ADD CONSTRAINT "posts_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "posts" ADD CONSTRAINT "posts_updater_id_users_id_fk" FOREIGN KEY ("updater_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "recurrence_rules" ADD CONSTRAINT "recurrence_rules_creator_id_users_id_fk" FOREIGN KEY ("creator_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "recurrence_rules" ADD CONSTRAINT "recurrence_rules_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "recurrence_rules" ADD CONSTRAINT "recurrence_rules_base_recurring_event_id_events_id_fk" FOREIGN KEY ("base_recurring_event_id") REFERENCES "public"."events"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "recurrence_rules" ADD CONSTRAINT "recurrence_rules_updater_id_users_id_fk" FOREIGN KEY ("updater_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "tag_assignments" ADD CONSTRAINT "tag_assignments_assignee_id_users_id_fk" FOREIGN KEY ("assignee_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "tag_assignments" ADD CONSTRAINT "tag_assignments_creator_id_users_id_fk" FOREIGN KEY ("creator_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "tag_assignments" ADD CONSTRAINT "tag_assignments_tag_id_tags_id_fk" FOREIGN KEY ("tag_id") REFERENCES "public"."tags"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
@@ -618,6 +648,9 @@ CREATE INDEX "events_end_at_index" ON "events" USING btree ("end_at");--> statem
 CREATE INDEX "events_name_index" ON "events" USING btree ("name");--> statement-breakpoint
 CREATE INDEX "events_organization_id_index" ON "events" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "events_start_at_index" ON "events" USING btree ("start_at");--> statement-breakpoint
+CREATE INDEX "events_is_recurring_index" ON "events" USING btree ("is_recurring");--> statement-breakpoint
+CREATE INDEX "events_base_recurring_event_id_index" ON "events" USING btree ("base_recurring_event_id");--> statement-breakpoint
+CREATE INDEX "events_recurrence_rule_id_index" ON "events" USING btree ("recurrence_rule_id");--> statement-breakpoint
 CREATE INDEX "families_created_at_index" ON "families" USING btree ("created_at");--> statement-breakpoint
 CREATE INDEX "families_creator_id_index" ON "families" USING btree ("creator_id");--> statement-breakpoint
 CREATE INDEX "families_name_index" ON "families" USING btree ("name");--> statement-breakpoint
@@ -667,6 +700,12 @@ CREATE INDEX "posts_created_at_index" ON "posts" USING btree ("created_at");--> 
 CREATE INDEX "posts_creator_id_index" ON "posts" USING btree ("creator_id");--> statement-breakpoint
 CREATE INDEX "posts_pinned_at_index" ON "posts" USING btree ("pinned_at");--> statement-breakpoint
 CREATE INDEX "posts_organization_id_index" ON "posts" USING btree ("organization_id");--> statement-breakpoint
+CREATE INDEX "recurrence_rules_created_at_index" ON "recurrence_rules" USING btree ("created_at");--> statement-breakpoint
+CREATE INDEX "recurrence_rules_creator_id_index" ON "recurrence_rules" USING btree ("creator_id");--> statement-breakpoint
+CREATE INDEX "recurrence_rules_frequency_index" ON "recurrence_rules" USING btree ("frequency");--> statement-breakpoint
+CREATE INDEX "recurrence_rules_organization_id_index" ON "recurrence_rules" USING btree ("organization_id");--> statement-breakpoint
+CREATE INDEX "recurrence_rules_base_recurring_event_id_index" ON "recurrence_rules" USING btree ("base_recurring_event_id");--> statement-breakpoint
+CREATE INDEX "recurrence_rules_latest_instance_date_index" ON "recurrence_rules" USING btree ("latest_instance_date");--> statement-breakpoint
 CREATE INDEX "tag_assignments_assignee_id_index" ON "tag_assignments" USING btree ("assignee_id");--> statement-breakpoint
 CREATE INDEX "tag_assignments_created_at_index" ON "tag_assignments" USING btree ("created_at");--> statement-breakpoint
 CREATE INDEX "tag_assignments_creator_id_index" ON "tag_assignments" USING btree ("creator_id");--> statement-breakpoint

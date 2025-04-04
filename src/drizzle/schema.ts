@@ -109,3 +109,8 @@ export {
 	volunteerGroupsTable,
 	volunteerGroupsTableRelations,
 } from "./tables/volunteerGroups";
+
+export {
+	recurrenceRulesTable,
+	recurrenceRulesTableRelations,
+} from "./tables/recurrenceRules";

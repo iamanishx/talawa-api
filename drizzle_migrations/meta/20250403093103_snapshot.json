@@ -1,6 +1,6 @@
 {
-  "id": "f46812cc-938c-40d7-95ed-cfeb34c017ac",
-  "prevId": "151043bc-8841-4ac6-8d13-6da4f9a45b83",
+  "id": "10d9ca4e-a10a-491b-8316-a52486d6f353",
+  "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -2696,6 +2696,32 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
+        },
+        "is_recurring": {
+          "name": "is_recurring",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "is_base_recurring_event": {
+          "name": "is_base_recurring_event",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "base_recurring_event_id": {
+          "name": "base_recurring_event_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "recurrence_rule_id": {
+          "name": "recurrence_rule_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -2788,6 +2814,51 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "events_is_recurring_index": {
+          "name": "events_is_recurring_index",
+          "columns": [
+            {
+              "expression": "is_recurring",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "events_base_recurring_event_id_index": {
+          "name": "events_base_recurring_event_id_index",
+          "columns": [
+            {
+              "expression": "base_recurring_event_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "events_recurrence_rule_id_index": {
+          "name": "events_recurrence_rule_id_index",
+          "columns": [
+            {
+              "expression": "recurrence_rule_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -2828,6 +2899,32 @@
             "id"
           ],
           "onDelete": "set null",
+          "onUpdate": "cascade"
+        },
+        "events_base_recurring_event_id_events_id_fk": {
+          "name": "events_base_recurring_event_id_events_id_fk",
+          "tableFrom": "events",
+          "tableTo": "events",
+          "columnsFrom": [
+            "base_recurring_event_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        },
+        "events_recurrence_rule_id_recurrence_rules_id_fk": {
+          "name": "events_recurrence_rule_id_recurrence_rules_id_fk",
+          "tableFrom": "events",
+          "tableTo": "recurrence_rules",
+          "columnsFrom": [
+            "recurrence_rule_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
           "onUpdate": "cascade"
         }
       },
@@ -4790,6 +4887,267 @@
         "posts_updater_id_users_id_fk": {
           "name": "posts_updater_id_users_id_fk",
           "tableFrom": "posts",
+          "tableTo": "users",
+          "columnsFrom": [
+            "updater_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.recurrence_rules": {
+      "name": "recurrence_rules",
+      "schema": "",
+      "columns": {
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "creator_id": {
+          "name": "creator_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "recurrence_rule_string": {
+          "name": "recurrence_rule_string",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recurrence_start_date": {
+          "name": "recurrence_start_date",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recurrence_end_date": {
+          "name": "recurrence_end_date",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "frequency": {
+          "name": "frequency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "interval": {
+          "name": "interval",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "count": {
+          "name": "count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "by_day": {
+          "name": "by_day",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "by_month": {
+          "name": "by_month",
+          "type": "integer[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "by_month_day": {
+          "name": "by_month_day",
+          "type": "integer[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "base_recurring_event_id": {
+          "name": "base_recurring_event_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "latest_instance_date": {
+          "name": "latest_instance_date",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp (3) with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updater_id": {
+          "name": "updater_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "recurrence_rules_created_at_index": {
+          "name": "recurrence_rules_created_at_index",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "recurrence_rules_creator_id_index": {
+          "name": "recurrence_rules_creator_id_index",
+          "columns": [
+            {
+              "expression": "creator_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "recurrence_rules_frequency_index": {
+          "name": "recurrence_rules_frequency_index",
+          "columns": [
+            {
+              "expression": "frequency",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "recurrence_rules_organization_id_index": {
+          "name": "recurrence_rules_organization_id_index",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "recurrence_rules_base_recurring_event_id_index": {
+          "name": "recurrence_rules_base_recurring_event_id_index",
+          "columns": [
+            {
+              "expression": "base_recurring_event_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "recurrence_rules_latest_instance_date_index": {
+          "name": "recurrence_rules_latest_instance_date_index",
+          "columns": [
+            {
+              "expression": "latest_instance_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "recurrence_rules_creator_id_users_id_fk": {
+          "name": "recurrence_rules_creator_id_users_id_fk",
+          "tableFrom": "recurrence_rules",
+          "tableTo": "users",
+          "columnsFrom": [
+            "creator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "cascade"
+        },
+        "recurrence_rules_organization_id_organizations_id_fk": {
+          "name": "recurrence_rules_organization_id_organizations_id_fk",
+          "tableFrom": "recurrence_rules",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        },
+        "recurrence_rules_base_recurring_event_id_events_id_fk": {
+          "name": "recurrence_rules_base_recurring_event_id_events_id_fk",
+          "tableFrom": "recurrence_rules",
+          "tableTo": "events",
+          "columnsFrom": [
+            "base_recurring_event_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        },
+        "recurrence_rules_updater_id_users_id_fk": {
+          "name": "recurrence_rules_updater_id_users_id_fk",
+          "tableFrom": "recurrence_rules",
           "tableTo": "users",
           "columnsFrom": [
             "updater_id"

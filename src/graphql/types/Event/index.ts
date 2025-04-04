@@ -6,3 +6,4 @@ import "./organization";
 import "./updatedAt";
 import "./updater";
 import "./venues";
+import "./recurringEventHelpers";
